@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEY = "body-progress-tracker-simple-v1";
 
+
 const measurementFields = [
   { key: "arm", label: "Ramię (cm)", step: "0.1", placeholder: "np. 28.0" },
   { key: "chest", label: "Klatka (cm)", step: "0.1", placeholder: "np. 92.0" },
@@ -349,7 +350,7 @@ function buildChartPoints(data, key, width, height, padding) {
   return { points, min, max, linePath, areaPath };
 }
 
-function MiniChart({ title, data, dataKey, unit, color }) {
+function MiniChart({ title, data, dataKey, unit, color, baselineValue = null, baselineLabel = null }) {
   const width = 640;
   const height = 220;
   const padding = 26;
@@ -364,7 +365,7 @@ function MiniChart({ title, data, dataKey, unit, color }) {
     );
   }
 
-  const first = chart.points[0]?.value;
+  const first = baselineValue ?? chart.points[0]?.value;
   const last = chart.points[chart.points.length - 1]?.value;
   const diff = last - first;
   const trendColor = diff <= 0 ? "#166534" : "#b91c1c";
@@ -410,7 +411,7 @@ function MiniChart({ title, data, dataKey, unit, color }) {
         </svg>
       </div>
 
-      <div style={styles.chartLegend}>Pierwszy wpis: {formatNumber(first)} {unit} • Ostatni wpis: {formatNumber(last)} {unit}</div>
+      <div style={styles.chartLegend}>{baselineLabel ?? "Pierwszy wpis"}: {formatNumber(first)} {unit} • Ostatni wpis: {formatNumber(last)} {unit}</div>
     </div>
   );
 }
@@ -442,6 +443,10 @@ export default function App() {
   const lastEntry = sortedEntries[sortedEntries.length - 1];
   const prevEntry = sortedEntries[sortedEntries.length - 2];
   const firstEntry = sortedEntries[0];
+    const weights = sortedEntries
+    .map((e) => e.weight)
+    .filter((w) => w != null);
+  const maxWeight = weights.length ? Math.max(...weights) : null;
 
   const bmi = getBmi(lastEntry?.weight, lastEntry?.height);
   const bmiStatus = getBmiStatus(bmi);
@@ -480,7 +485,7 @@ export default function App() {
   };
 
   const stats = [
-    { title: "Zmiana wagi", value: formatDiff(getDiff(lastEntry?.weight, firstEntry?.weight), "kg") },
+    { title: "Spadek od najwyższej wagi", value: formatDiff(getDiff(lastEntry?.weight, maxWeight), "kg") },
     { title: "Zmiana talii", value: formatDiff(getDiff(lastEntry?.waist, firstEntry?.waist), "cm") },
     { title: "Zmiana brzucha", value: formatDiff(getDiff(lastEntry?.belly, firstEntry?.belly), "cm") },
     { title: "Liczba wpisów", value: sortedEntries.length },
@@ -601,6 +606,8 @@ export default function App() {
                   dataKey={chart.key}
                   unit={chart.unit}
                   color={chart.color}
+                  baselineValue={chart.key === "weight" ? maxWeight : null}
+                  baselineLabel={chart.key === "weight" ? "Najwyższa waga" : null}
                 />
               ))
             )}
